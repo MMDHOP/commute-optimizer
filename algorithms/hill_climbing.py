@@ -7,8 +7,8 @@ from typing import Tuple
 from algorithms.base import LocalSearchSolver
 from core.state import State
 from core.problem import CommuteProblem
-from algorithms.operators import get_neighbors
-
+from algorithms.operators import get_neighbors, random_state
+import random
 
 class HillClimbingSolver(LocalSearchSolver):
     def __init__(self, problem: CommuteProblem, **kwargs):
@@ -30,16 +30,43 @@ class HillClimbingSolver(LocalSearchSolver):
         - Looping indefinitely on flat plateaus.
         """
         # TODO: Implement Hill Climbing with sideways moves and restarts
-        current = self.problem.generate_initial_state()
-        current_cost = self.problem.evaluate(current)
-        self.history.append(current_cost)
+        best_state = None
+        best_cost = float("inf")
 
-        while True:
-            best = min(get_neighbors(current, self.problem), key=self.problem.evaluate)
-            best_cost = self.problem.evaluate(best)
-            if best_cost >= current_cost:
-                break
-            current, current_cost = best, best_cost
-            self.history.append(current_cost)
+        for restart in range(self.max_restarts + 1):
+            if restart == 0:
+                current = self.problem.generate_initial_state()
+            else:
+                current = random_state(self.problem)
+            current_cost = self.problem.evaluate(current)
+            visited = {current}
+            sideways = 0
 
-        return current, current_cost
+            if current_cost < best_cost:
+                best_state, best_cost = current, current_cost
+            self.history.append(best_cost)
+
+            while True:
+                scored = [(self.problem.evaluate(n), n) for n in get_neighbors(current, self.problem)]
+                lowest = min(cost for cost, _ in scored)
+                candidates = [n for cost, n in scored if abs(cost - lowest) < 1e-9]
+
+                if lowest < current_cost - 1e-9:
+                    current = random.choice(candidates)
+                    sideways = 0
+                elif abs(lowest - current_cost) < 1e-9 and sideways < self.max_sideways:
+                    fresh = [n for n in candidates if n not in visited]
+                    if not fresh:
+                        break
+                    current = random.choice(fresh)
+                    sideways += 1
+                else:
+                    break
+
+                visited.add(current)
+                current_cost = lowest
+                if current_cost < best_cost:
+                    best_state, best_cost = current, current_cost
+                self.history.append(best_cost)
+
+        return best_state, best_cost
