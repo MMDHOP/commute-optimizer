@@ -40,17 +40,19 @@ def get_neighbors(state: State, problem: CommuteProblem) -> List[State]:
     """
     # TODO: Implement neighborhood generation
     neighbors = []
-    for k in (-1, 1):
+    for k in (-2, -1, 1, 2):
         new_time = round(state.departure_time + k * problem.t_step, 2)
         neighbors.append(State(state.path, new_time))
 
     path = state.path
     for i in range(len(path) - 1):
-        forbidden = set(path[:i]) | set(path[i + 2:])
-        for detour in _find_simple_paths(problem, path[i], path[i + 1], forbidden, 3):
-            if detour == path[i:i + 2]:
-                continue
-            neighbors.append(State(path[:i] + detour + path[i + 2:], state.departure_time))
+        for j in range(i + 1, len(path)):
+            forbidden = set(path[:i]) | set(path[j + 1:])
+            detours = _find_simple_paths(problem, path[i], path[j], forbidden, j - i + 2)
+            for detour in detours:
+                if detour == path[i:j + 1]:
+                    continue
+                neighbors.append(State(path[:i] + detour + path[j + 1:], state.departure_time))
 
     unique = []
     seen = set()
