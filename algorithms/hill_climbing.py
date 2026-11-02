@@ -30,4 +30,16 @@ class HillClimbingSolver(LocalSearchSolver):
         - Looping indefinitely on flat plateaus.
         """
         # TODO: Implement Hill Climbing with sideways moves and restarts
-        raise NotImplementedError("Implement solve() in algorithms/hill_climbing.py")
+        current = self.problem.generate_initial_state()
+        current_cost = self.problem.evaluate(current)
+        self.history.append(current_cost)
+
+        while True:
+            best = min(get_neighbors(current, self.problem), key=self.problem.evaluate)
+            best_cost = self.problem.evaluate(best)
+            if best_cost >= current_cost:
+                break
+            current, current_cost = best, best_cost
+            self.history.append(current_cost)
+
+        return current, current_cost
