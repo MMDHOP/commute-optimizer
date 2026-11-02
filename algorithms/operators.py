@@ -6,7 +6,7 @@ Defines candidate neighborhood generation and genetic recombination operators.
 from typing import List, Tuple
 from core.state import State
 from core.problem import CommuteProblem
-
+import random
 
 def get_neighbors(state: State, problem: CommuteProblem) -> List[State]:
     """
@@ -88,7 +88,27 @@ def crossover(parent1: State, parent2: State, problem: CommuteProblem) -> State:
         State: A newly generated child State.
     """
     # TODO: Implement genetic crossover
-    raise NotImplementedError("Implement crossover in algorithms/operators.py")
+    path1, path2 = parent1.path, parent2.path
+    shared = [node for node in path1[1:-1] if node in path2[1:-1]]
+    random.shuffle(shared)
+
+    for node in shared:
+        if random.random() < 0.5:
+            first, second = path1, path2
+        else:
+            first, second = path2, path1
+        child_path = first[:first.index(node) + 1] + second[second.index(node) + 1:]
+        if problem.is_valid_path(child_path):
+            return State(child_path, _blend_time(parent1, parent2, problem))
+
+    if problem.evaluate(parent1) <= problem.evaluate(parent2):
+        better = parent1
+    else:
+        better = parent2
+    options = get_neighbors(better, problem)
+    if options:
+        return random.choice(options)
+    return better
 
 
 
@@ -107,3 +127,18 @@ def _find_simple_paths(problem: CommuteProblem, start: str, end: str, forbidden:
                 continue
             stack.append((nxt, partial + (nxt,)))
     return found
+
+
+def _blend_time(parent1: State, parent2: State, problem: CommuteProblem) -> float:
+    average = (parent1.departure_time + parent2.departure_time) / 2
+    steps = round((average - problem.t_min) / problem.t_step)
+    blended = round(problem.t_min + steps * problem.t_step, 2)
+    return min(max(blended, problem.t_min), problem.t_max)
+
+
+def random_state(problem: CommuteProblem, moves: int = 10) -> State:
+    state = problem.generate_initial_state()
+    state = State(state.path, random.choice(problem.get_valid_time_domain()))
+    for _ in range(moves):
+        state = random.choice(get_neighbors(state, problem))
+    return state
