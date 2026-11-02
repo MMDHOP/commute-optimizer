@@ -3,7 +3,7 @@ algorithms/operators.py
 Defines candidate neighborhood generation and genetic recombination operators.
 """
 
-from typing import List
+from typing import List, Tuple
 from core.state import State
 from core.problem import CommuteProblem
 
@@ -39,7 +39,26 @@ def get_neighbors(state: State, problem: CommuteProblem) -> List[State]:
         List[State]: A list of valid neighboring State objects.
     """
     # TODO: Implement neighborhood generation
-    raise NotImplementedError("Implement get_neighbors in algorithms/operators.py")
+    neighbors = []
+    for k in (-1, 1):
+        new_time = round(state.departure_time + k * problem.t_step, 2)
+        neighbors.append(State(state.path, new_time))
+
+    path = state.path
+    for i in range(len(path) - 1):
+        forbidden = set(path[:i]) | set(path[i + 2:])
+        for detour in _find_simple_paths(problem, path[i], path[i + 1], forbidden, 3):
+            if detour == path[i:i + 2]:
+                continue
+            neighbors.append(State(path[:i] + detour + path[i + 2:], state.departure_time))
+
+    unique = []
+    seen = set()
+    for n in neighbors:
+        if n not in seen and problem.is_valid_state(n):
+            seen.add(n)
+            unique.append(n)
+    return unique
 
 
 def crossover(parent1: State, parent2: State, problem: CommuteProblem) -> State:
@@ -68,3 +87,21 @@ def crossover(parent1: State, parent2: State, problem: CommuteProblem) -> State:
     """
     # TODO: Implement genetic crossover
     raise NotImplementedError("Implement crossover in algorithms/operators.py")
+
+
+
+def _find_simple_paths(problem: CommuteProblem, start: str, end: str, forbidden: set, max_hops: int) -> List[Tuple[str, ...]]:
+    found = []
+    stack = [(start, (start,))]
+    while stack:
+        node, partial = stack.pop()
+        if node == end:
+            found.append(partial)
+            continue
+        if len(partial) - 1 >= max_hops:
+            continue
+        for nxt in problem.network.get_neighbors(node):
+            if nxt in partial or nxt in forbidden:
+                continue
+            stack.append((nxt, partial + (nxt,)))
+    return found
