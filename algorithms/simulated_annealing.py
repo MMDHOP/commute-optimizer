@@ -8,7 +8,8 @@ from algorithms.base import LocalSearchSolver
 from core.state import State
 from core.problem import CommuteProblem
 from algorithms.operators import get_neighbors
-
+import math
+import random
 
 class SimulatedAnnealingSolver(LocalSearchSolver):
     def __init__(self, problem: CommuteProblem, **kwargs):
@@ -33,4 +34,26 @@ class SimulatedAnnealingSolver(LocalSearchSolver):
         - Ignoring the temperature parameter or turning this into pure hill climbing.
         """
         # TODO: Implement Simulated Annealing
-        raise NotImplementedError("Implement solve() in algorithms/simulated_annealing.py")
+        current = self.problem.generate_initial_state()
+        current_cost = self.problem.evaluate(current)
+        best_state, best_cost = current, current_cost
+        temperature = self.initial_temp
+
+        for _ in range(self.max_iterations):
+            if temperature < self.min_temp:
+                break
+
+            candidate = random.choice(get_neighbors(current, self.problem))
+            candidate_cost = self.problem.evaluate(candidate)
+            delta = candidate_cost - current_cost
+
+            if delta < 0 or random.random() < math.exp(-delta / temperature):
+                current, current_cost = candidate, candidate_cost
+
+            if current_cost < best_cost:
+                best_state, best_cost = current, current_cost
+
+            self.history.append(best_cost)
+            temperature *= self.cooling_rate
+
+        return best_state, best_cost
